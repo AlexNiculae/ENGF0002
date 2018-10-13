@@ -50,7 +50,7 @@ class Point(object):
     the coordintes from the original list '''    
 def update_position(position_list, position):
     newlist = []
-    is_x = True;
+    is_x = True # Bug fix: ";"
     for val in position_list:
         if is_x:
             newlist.append(val + position.getX())
@@ -79,7 +79,11 @@ class Building():
     def shrink(self):
         self.height = self.height - 50
         self.canvas.delete(self.main_rect)
-        self.main_rect = self.canvas.create_rectangle(self.x, CANVAS_HEIGHT, self.x + self.width, CANVAS_HEIGHT-self.height, fill="brown")
+
+        # Bug fix: create the building as long as it is not destroyed
+        #          it's not really a bug, but it's more intuitive
+        if self.height > 0:
+            self.main_rect = self.canvas.create_rectangle(self.x, CANVAS_HEIGHT, self.x + self.width, CANVAS_HEIGHT-self.height, fill="brown")
 
     def cleanup(self):
         self.canvas.delete(self.main_rect)
@@ -169,7 +173,9 @@ class Plane():
     def move(self):
         self.position.move(-4 * speed, 0)
         if self.position.getX() < -self.width:
-            self.position.move(CANVAS_WIDTH, 40)
+            #Bug fix: reset plane position such that the rightmost building can be destroyed
+            self.position.move(CANVAS_WIDTH + self.width, 40)
+
             #ensure we don't go off the bottom of the screen
             if self.position.getY() > CANVAS_HEIGHT:
                 self.position.Y = CANVAS_HEIGHT
@@ -192,7 +198,7 @@ class Display(Frame):
         self.rand = Random()
 
         #create game objects
-        self.plane = Plane(self.canvas, CANVAS_WIDTH - 100, 0)
+        self.plane = Plane(self.canvas, CANVAS_WIDTH + 100, 0)
         self.bomb = Bomb(self.canvas)
         self.buildings = []
         self.building_width = SPACING * 0.8
@@ -223,7 +229,8 @@ class Display(Frame):
             building.cleanup()
 
         #create the new ones
-        for building_num in range(0, 1200//SPACING):
+        #Bug fix: create building only within the game area
+        for building_num in range(0, CANVAS_WIDTH//SPACING): 
             height = self.rand.randint(10,500) #random number between 10 and 500
             self.buildings.append(Building(self.canvas, building_num, height,
                                            self.building_width))
@@ -235,6 +242,11 @@ class Display(Frame):
     def check_bomb(self):
         if not self.bomb.falling:
             return
+        
+        # Bug fix: is the bomb still in the game area? if not, explode it
+        if self.bomb.position.Y > CANVAS_HEIGHT:
+            self.bomb.explode()
+
         # did the bomb hit a building?
         for building in self.buildings:
             if building.is_inside(self.bomb.position):
@@ -252,11 +264,16 @@ class Display(Frame):
         plane_wing = self.plane.position.copy()
         plane_wing.move(94,48)
         for building in self.buildings:
+            #Bug fix: Ignore destroyed buildings
+            if building.height <= 0:
+                continue
             if (building.is_inside(plane_nose)
                 or building.is_inside(plane_body_bottom)
                 or building.is_inside(plane_wing)):
                 self.game_over()
-        if plane_body_bottom.getY() == CANVAS_HEIGHT and plane_body_bottom.getX() < 20:
+        
+        #Bug fix: checking if plane landed
+        if self.plane.position.getY() >= CANVAS_HEIGHT:
             self.plane_landed()
 
     ''' game_over is called when the plane crashes to stop play and display the 
@@ -318,7 +335,7 @@ class Display(Frame):
 ''' the Game class runs the main loop, and initializes tkinter '''
 class Game():
     def __init__(self):
-        self.root = Tk();
+        self.root = Tk() # Bug fix: ";"
         self.windowsystem = self.root.call('tk', 'windowingsystem')
         self.disp = Display(self.root)
         self.root.bind_all('<Key>', self.key)
@@ -365,5 +382,5 @@ class Game():
             self.checkspeed()
         self.root.destroy()
 
-game = Game();
+game = Game() # Bug fix: ";"
 game.run()
